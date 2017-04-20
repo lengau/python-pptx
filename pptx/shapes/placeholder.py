@@ -300,7 +300,7 @@ class ChartPlaceholder(_BaseSlidePlaceholder):
         Return a newly created `p:graphicFrame` element having the specified
         position and size and containing the chart identified by *rId*.
         """
-        id_, name = self.id, self.name
+        id_, name = self.shape_id, self.name
         return CT_GraphicalObjectFrame.new_chart_graphicFrame(
             id_, name, rId, x, y, cx, cy
         )
@@ -402,7 +402,8 @@ class TablePlaceholder(_BaseSlidePlaceholder):
         of this placeholder and having its same width. The table's height is
         determined by the number of rows.
         """
-        id_, name, height = self.id, self.name, Emu(rows*370840)
+        shape_id, name, height = self.shape_id, self.name, Emu(rows*370840)
         return CT_GraphicalObjectFrame.new_table_graphicFrame(
-            id_, name, rows, cols, self.left, self.top, self.width, height
+            shape_id, name, rows, cols, self.left, self.top, self.width,
+            height
         )

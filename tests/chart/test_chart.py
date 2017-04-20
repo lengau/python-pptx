@@ -9,11 +9,12 @@ from __future__ import absolute_import, print_function
 import pytest
 
 from pptx.chart.axis import CategoryAxis, DateAxis, ValueAxis
-from pptx.chart.chart import Chart, Legend, _Plots
+from pptx.chart.chart import Chart, ChartTitle, Legend, _Plots
 from pptx.chart.data import ChartData
 from pptx.chart.plot import _BasePlot
 from pptx.chart.series import SeriesCollection
 from pptx.chart.xmlwriter import _BaseSeriesXmlRewriter
+from pptx.dml.chtfmt import ChartFormat
 from pptx.enum.chart import XL_CHART_TYPE
 from pptx.parts.chart import ChartWorkbook
 
@@ -24,6 +25,24 @@ from ..unitutil.mock import (
 
 
 class DescribeChart(object):
+
+    def it_knows_whether_it_has_a_title(self, has_title_get_fixture):
+        chart, expected_value = has_title_get_fixture
+        assert chart.has_title is expected_value
+
+    def it_can_change_whether_it_has_a_title(self, has_title_set_fixture):
+        chart, new_value, expected_xml = has_title_set_fixture
+        chart.has_title = new_value
+        assert chart._chartSpace.chart.xml == expected_xml
+
+    def it_provides_access_to_the_chart_title(self, title_fixture):
+        chart, expected_xml, ChartTitle_, chart_title_ = title_fixture
+
+        chart_title = chart.chart_title
+
+        assert chart.element.xpath('c:chart/c:title')[0].xml == expected_xml
+        ChartTitle_.assert_called_once_with(chart.element.chart.title)
+        assert chart_title is chart_title_
 
     def it_provides_access_to_the_category_axis(self, category_axis_fixture):
         chart, category_axis_, AxisCls_, xAx = category_axis_fixture
@@ -152,6 +171,28 @@ class DescribeChart(object):
         return chart, new_value, expected_xml
 
     @pytest.fixture(params=[
+        ('c:chartSpace/c:chart',         False),
+        ('c:chartSpace/c:chart/c:title', True),
+    ])
+    def has_title_get_fixture(self, request):
+        chartSpace_cxml, expected_value = request.param
+        chart = Chart(element(chartSpace_cxml), None)
+        return chart, expected_value
+
+    @pytest.fixture(params=[
+        ('c:chart',         True,  'c:chart/c:title/(c:layout,c:overlay{val='
+                                   '0})'),
+        ('c:chart/c:title', True,  'c:chart/c:title'),
+        ('c:chart/c:title', False, 'c:chart'),
+        ('c:chart',         False, 'c:chart'),
+    ])
+    def has_title_set_fixture(self, request):
+        chart_cxml, new_value, expected_cxml = request.param
+        chart = Chart(element('c:chartSpace/%s' % chart_cxml), None)
+        expected_xml = xml(expected_cxml)
+        return chart, new_value, expected_xml
+
+    @pytest.fixture(params=[
         ('c:chartSpace/c:chart',          False),
         ('c:chartSpace/c:chart/c:legend', True),
     ])
@@ -216,6 +257,18 @@ class DescribeChart(object):
         return chart, new_value, expected_xml
 
     @pytest.fixture(params=[
+        ('c:chartSpace/c:chart',
+         'c:title/(c:layout,c:overlay{val=0})'),
+        ('c:chartSpace/c:chart/c:title/c:layout',
+         'c:title/c:layout'),
+    ])
+    def title_fixture(self, request, ChartTitle_, chart_title_):
+        chartSpace_cxml, expected_cxml = request.param
+        chart = Chart(element(chartSpace_cxml), None)
+        expected_xml = xml(expected_cxml)
+        return chart, expected_xml, ChartTitle_, chart_title_
+
+    @pytest.fixture(params=[
         ('c:chartSpace/c:chart/c:plotArea/(c:catAx,c:valAx)', 0),
         ('c:chartSpace/c:chart/c:plotArea/(c:valAx,c:valAx)', 1),
     ])
@@ -247,6 +300,16 @@ class DescribeChart(object):
     @pytest.fixture
     def chart_data_(self, request):
         return instance_mock(request, ChartData)
+
+    @pytest.fixture
+    def ChartTitle_(self, request, chart_title_):
+        return class_mock(
+            request, 'pptx.chart.chart.ChartTitle', return_value=chart_title_
+        )
+
+    @pytest.fixture
+    def chart_title_(self, request):
+        return instance_mock(request, ChartTitle)
 
     @pytest.fixture
     def DateAxis_(self, request, date_axis_):
@@ -328,6 +391,92 @@ class DescribeChart(object):
         return property_mock(
             request, Chart, '_workbook', return_value=workbook_
         )
+
+
+class DescribeChartTitle(object):
+
+    def it_provides_access_to_its_format(self, format_fixture):
+        chart_title, ChartFormat_, format_ = format_fixture
+        format = chart_title.format
+        ChartFormat_.assert_called_once_with(chart_title.element)
+        assert format is format_
+
+    def it_knows_whether_it_has_a_text_frame(self, has_tf_get_fixture):
+        chart_title, expected_value = has_tf_get_fixture
+        value = chart_title.has_text_frame
+        assert value is expected_value
+
+    def it_can_change_whether_it_has_a_text_frame(self, has_tf_set_fixture):
+        chart_title, value, expected_xml = has_tf_set_fixture
+        chart_title.has_text_frame = value
+        assert chart_title._element.xml == expected_xml
+
+    def it_provides_access_to_its_text_frame(self, text_frame_fixture):
+        chart_title, TextFrame_, text_frame_ = text_frame_fixture
+        text_frame = chart_title.text_frame
+        TextFrame_.assert_called_once_with(
+            chart_title._element.tx.rich, chart_title
+        )
+        assert text_frame is text_frame_
+
+    # fixtures -------------------------------------------------------
+
+    @pytest.fixture
+    def format_fixture(self, request, ChartFormat_, format_):
+        chart_title = ChartTitle(element('c:title'))
+        return chart_title, ChartFormat_, format_
+
+    @pytest.fixture(params=[
+        ('c:title',               False),
+        ('c:title/c:tx',          False),
+        ('c:title/c:tx/c:strRef', False),
+        ('c:title/c:tx/c:rich',   True),
+    ])
+    def has_tf_get_fixture(self, request):
+        title_cxml, expected_value = request.param
+        chart_title = ChartTitle(element(title_cxml))
+        return chart_title, expected_value
+
+    @pytest.fixture(params=[
+        ('c:title{a:b=c}', True,
+         'c:title{a:b=c}/c:tx/c:rich/(a:bodyPr,a:lstStyle,a:p)'),
+        ('c:title{a:b=c}/c:tx', True,
+         'c:title{a:b=c}/c:tx/c:rich/(a:bodyPr,a:lstStyle,a:p)'),
+        ('c:title{a:b=c}/c:tx/c:strRef', True,
+         'c:title{a:b=c}/c:tx/c:rich/(a:bodyPr,a:lstStyle,a:p)'),
+        ('c:title/c:tx/c:rich',   True,  'c:title/c:tx/c:rich'),
+        ('c:title',               False, 'c:title'),
+        ('c:title/c:tx',          False, 'c:title'),
+        ('c:title/c:tx/c:rich',   False, 'c:title'),
+        ('c:title/c:tx/c:strRef', False, 'c:title'),
+    ])
+    def has_tf_set_fixture(self, request):
+        title_cxml, value, expected_cxml = request.param
+        chart_title = ChartTitle(element(title_cxml))
+        expected_xml = xml(expected_cxml)
+        return chart_title, value, expected_xml
+
+    @pytest.fixture
+    def text_frame_fixture(self, request, TextFrame_):
+        chart_title = ChartTitle(element('c:title'))
+        text_frame_ = TextFrame_.return_value
+        return chart_title, TextFrame_, text_frame_
+
+    # fixture components ---------------------------------------------
+
+    @pytest.fixture
+    def ChartFormat_(self, request, format_):
+        return class_mock(
+            request, 'pptx.chart.chart.ChartFormat', return_value=format_
+        )
+
+    @pytest.fixture
+    def format_(self, request):
+        return instance_mock(request, ChartFormat)
+
+    @pytest.fixture
+    def TextFrame_(self, request):
+        return class_mock(request, 'pptx.chart.chart.TextFrame')
 
 
 class Describe_Plots(object):

@@ -3,6 +3,23 @@
 Release History
 ---------------
 
+0.6.5 (2017-03-21)
+++++++++++++++++++
+
+- #267 compensate for non-conforming PowerPoint behavior on c:overlay element
+
+- compensate for non-conforming (to spec) PowerPoint behavior related to
+  c:dLbl/c:tx that results in "can't save" error when explicit data labels
+  are added to bubbles on a bubble chart.
+
+
+0.6.4 (2017-03-17)
+++++++++++++++++++
+
+- add Chart.chart_title and ChartTitle object
+- #263 Use Number type to test for numeric category
+
+
 0.6.3 (2017-02-28)
 ++++++++++++++++++
 
